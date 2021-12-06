@@ -536,6 +536,15 @@ export function computeVideoEncodings(
     width, height, videoEncoding.maxBitrate, videoEncoding.maxFramerate,
   );
 
+  // NOTE:
+  //   1. Ordering of these encodings is important. Chrome seems
+  //      to use the index into encodings to decide which layer
+  //      to disable when constrained (bandwidth or CPU). So,
+  //      encodings should be ordered in increasing spatial
+  //      resolution order.
+  //   2. ion-sfu translates rids into layers. So, all encodings
+  //      should have the base layer `q` and then more added
+  //      based on other conditions.
   const size = Math.max(width, height);
   if (size >= 960 && midPreset) {
     return encodingsFromPresets(width, height, [
@@ -587,15 +596,6 @@ export function presetsForResolution(
   return presets43;
 }
 
-// NOTE:
-//   1. Ordering of these encodings is important. Chrome seems
-//      to use the index into encodings to decide which layer
-//      to disable when constrained (bandwidth or CPU). So,
-//      encodings should be ordered in increasing spatial
-//      resolution order.
-//   2. ion-sfu translates rids into layers. So, all encodings
-//      should have the base layer `q` and then more added
-//      based on other conditions.
 // presets should be ordered by low, medium, high
 function encodingsFromPresets(
   width: number,
@@ -607,10 +607,11 @@ function encodingsFromPresets(
     if (idx >= videoRids.length) {
       return;
     }
+    const size = Math.min(width, height);
     const rid = videoRids[idx];
     encodings.push({
       rid,
-      scaleResolutionDownBy: height / preset.height,
+      scaleResolutionDownBy: size / preset.height,
       maxBitrate: preset.encoding.maxBitrate,
       /* @ts-ignore */
       maxFramerate: preset.encoding.maxFramerate,
