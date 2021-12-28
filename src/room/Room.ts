@@ -29,6 +29,7 @@ import { Track } from './track/Track';
 import TrackPublication from './track/TrackPublication';
 import { RemoteTrack } from './track/types';
 import { unpackStreamId } from './utils';
+import { toProtoSessionDescription } from '../api/SignalClient';
 
 export enum RoomState {
   Disconnected = 'disconnected',
@@ -93,6 +94,9 @@ class Room extends EventEmitter {
 
   /** options of room */
   options: RoomOptions;
+
+  /** connect options of room */
+  connOptions?: RoomConnectOptions;
 
   private audioEnabled = true;
 
@@ -170,6 +174,12 @@ class Room extends EventEmitter {
       this.emit(RoomEvent.Reconnected);
     });
 
+    this.engine.on(EngineEvent.SignalConnected, () => {
+      if (this.state == RoomState.Reconnecting) {
+        this.sendSubscribeState()
+      }
+    });
+
     this.engine.on(EngineEvent.ConnectionQualityUpdate, this.handleConnectionQualityUpdate);
   }
 
@@ -200,6 +210,8 @@ class Room extends EventEmitter {
     if (opts?.rtcConfig) {
       this.engine.rtcConfig = opts.rtcConfig;
     }
+
+    this.connOptions = opts
 
     try {
       const joinResponse = await this.engine.join(url, token, opts);
@@ -654,6 +666,35 @@ class Room extends EventEmitter {
         });
     }
     return participant;
+  }
+
+  private sendSubscribeState() {
+    if (this.engine.subscriber == undefined) {
+      return
+    }
+    this.engine.subscriber.onOffer = (offer) => {
+      // in case of auto subscribe, send unsubscribe state
+      // else send subscribe state
+      const sendUnsub = this.connOptions?.autoSubscribe || false
+      const trackSids = new Array<string>()
+      this.participants.forEach(participant => {
+        participant.tracks.forEach(track => {
+          if (track.isSubscribed != sendUnsub) {
+            trackSids.push(track.trackSid)
+          }
+        })
+      });
+
+      this.engine.client.sendSyncSubscription({
+        offer: toProtoSessionDescription(offer),
+        subscription: {
+          trackSids: trackSids,
+          subscribe: !sendUnsub,
+          participantTracks: [],
+        }
+      })
+    }
+    this.engine.subscriber.createAndSendOffer({iceRestart: true})
   }
 
   /** @internal */
