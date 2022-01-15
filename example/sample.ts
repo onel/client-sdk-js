@@ -6,6 +6,7 @@ import {
   VideoCaptureOptions, VideoPresets,
 } from '../src/index';
 import { ConnectionQuality } from '../src/room/participant/Participant';
+import { sleep } from '../src/room/utils';
 
 const $ = (id: string) => document.getElementById(id);
 
@@ -53,8 +54,10 @@ const appActions = {
     if (room && shouldPublish) {
       await Promise.all([
         room.localParticipant.setMicrophoneEnabled(true),
-        room.localParticipant.setCameraEnabled(true),
+        // room.localParticipant.setCameraEnabled(true),
       ]);
+      await sleep(300);
+      room.localParticipant.setCameraEnabled(true);
       updateButtonsForPublishState();
     }
 
