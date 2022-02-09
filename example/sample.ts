@@ -73,6 +73,7 @@ const appActions = {
       .on(RoomEvent.ParticipantDisconnected, participantDisconnected)
       .on(RoomEvent.DataReceived, handleData)
       .on(RoomEvent.Disconnected, handleRoomDisconnect)
+      .on(RoomEvent.StateChanged, handleRoomConnectionState)
       .on(RoomEvent.Reconnecting, () => appendLog('Reconnecting to room'))
       .on(RoomEvent.Reconnected, () => appendLog('Successfully reconnected!'))
       .on(RoomEvent.LocalTrackPublished, () => {
@@ -343,6 +344,10 @@ function appendLog(...args: any[]) {
   (() => {
     logger.scrollTop = logger.scrollHeight;
   })();
+}
+
+function handleRoomConnectionState(roomState: RoomState) {
+  appendLog(`room state changed to ${roomState}`);
 }
 
 // updates participant UI
